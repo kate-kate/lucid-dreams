@@ -242,8 +242,10 @@ class _LucidAppState extends State {
                         : 'You decided to never get notifications'),
                   ),
                   Container(
-                    child: Text(timeList.map((time) => time).join(', ')),
-                  )
+                    child: Text(switchEnabled && repeatPeriodsNumber > 0
+                        ? timeList.map((time) => time).join(', ')
+                        : ''),
+                  ),
                 ],
               ),
             ),
@@ -310,7 +312,6 @@ class _LucidAppState extends State {
         await addNotification(
             1, toHour, toMinute, notificationList, addNotifications);
       } else {
-        
         var intervalNumber = getInterval(repeatNumber);
         var hour = fromHour;
         var minute = fromMinute;
@@ -372,7 +373,8 @@ class _LucidAppState extends State {
   }
 
   int getInterval(int repeatPeriodsNum) {
-    var totalMinutes = (toHour - fromHour - 1) * 60 + (60 - fromMinute) + toMinute;
+    var totalMinutes =
+        (toHour - fromHour - 1) * 60 + (60 - fromMinute) + toMinute;
     return (totalMinutes / (repeatPeriodsNum - 1)).floor();
   }
 }
