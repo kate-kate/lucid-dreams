@@ -204,6 +204,9 @@ class _LucidAppState extends State {
                       if (parsedValue > 60) {
                         return '60 notifications is maximum';
                       }
+                      if (getInterval(parsedValue) == 0) {
+                        return 'You want to get notifications too often:)';
+                      }
                     },
                   ),
                   TextFormField(
@@ -298,24 +301,21 @@ class _LucidAppState extends State {
         toHour != null &&
         toMinute != null &&
         repeatNumber > 0) {
-      if (repeatPeriodsNumber == 1) {
+      if (repeatNumber == 1) {
         await addNotification(
             0, fromHour, fromMinute, notificationList, addNotifications);
-      } else if (repeatPeriodsNumber == 2) {
+      } else if (repeatNumber == 2) {
         await addNotification(
             0, fromHour, fromMinute, notificationList, addNotifications);
         await addNotification(
             1, toHour, toMinute, notificationList, addNotifications);
       } else {
-        var totalMinutes =
-            (toHour - fromHour - 1) * 60 + (60 - fromMinute) + toMinute;
-        print("total mins: " + totalMinutes.toString());
-        var intervalNumber = (totalMinutes / (repeatPeriodsNumber - 1)).floor();
-        print("interval: " + intervalNumber.toString());
+        
+        var intervalNumber = getInterval(repeatNumber);
         var hour = fromHour;
         var minute = fromMinute;
 
-        for (var counter = 0; counter < repeatPeriodsNumber; counter++) {
+        for (var counter = 0; counter < repeatNumber; counter++) {
           if (counter == 0) {
             await addNotification(
                 counter, hour, minute, notificationList, addNotifications);
@@ -326,9 +326,10 @@ class _LucidAppState extends State {
                 hour++;
               }
             }
+
             if ((hour == toHour &&
                     (minute > toMinute ||
-                        toMinute - minute <= intervalNumber)) ||
+                        toMinute - minute < intervalNumber)) ||
                 (hour > toHour)) {
               await addNotification(counter, toHour, toMinute, notificationList,
                   addNotifications);
@@ -356,12 +357,6 @@ class _LucidAppState extends State {
           notificationText,
           new Time(hour, minute, 0),
           platformChannelSpecifics);
-      print("#" +
-          id.toString() +
-          " " +
-          hour.toString() +
-          ":" +
-          formatMinute(minute));
     }
   }
 
@@ -374,5 +369,10 @@ class _LucidAppState extends State {
 
   String getFromattedTimeString(int hour, int minute) {
     return hour.toString() + ":" + formatMinute(minute);
+  }
+
+  int getInterval(int repeatPeriodsNum) {
+    var totalMinutes = (toHour - fromHour - 1) * 60 + (60 - fromMinute) + toMinute;
+    return (totalMinutes / (repeatPeriodsNum - 1)).floor();
   }
 }
