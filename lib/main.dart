@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:math';
 
 final ThemeData kIOSTheme = new ThemeData(brightness: Brightness.dark);
 
@@ -25,7 +26,6 @@ class _LucidAppState extends State {
   int toHour;
   int toMinute;
   int repeatPeriodsNumber;
-  String notificationText = '';
 
   final _formKey = GlobalKey<FormState>();
   List<String> timeList = new List<String>();
@@ -73,9 +73,6 @@ class _LucidAppState extends State {
       repeatPeriodsNumber = prefs.getInt('lucidRepeatNumber') != null
           ? prefs.getInt('lucidRepeatNumber')
           : 0;
-      notificationText = prefs.getString('lucidNotificationText') != null
-          ? prefs.getString('lucidNotificationText')
-          : 'Reality check';
     });
 
     await _generateTimeList(
@@ -92,7 +89,6 @@ class _LucidAppState extends State {
     toController = TextEditingController(text: toText);
     repeatController =
         TextEditingController(text: repeatPeriodsNumber.toString());
-    notifTextController = TextEditingController(text: notificationText);
   }
 
   void switchNotification(bool value) async {
@@ -132,14 +128,6 @@ class _LucidAppState extends State {
       repeatPeriodsNumber =
           repeatNumberInput != '' ? int.parse(repeatNumberInput) : 0;
       prefs.setInt('lucidRepeatNumber', repeatPeriodsNumber);
-    });
-  }
-
-  void setNotificationText(String notifText) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      notificationText = notifText;
-      prefs.setString('lucidNotificationText', notificationText);
     });
   }
 
@@ -204,18 +192,26 @@ class _LucidAppState extends State {
                       if (parsedValue > 60) {
                         return '60 notifications is maximum';
                       }
-                      if (getInterval(parsedValue) == 0) {
-                        return 'You want to get notifications too often:)';
-                      }
-                    },
-                  ),
-                  TextFormField(
-                    decoration:
-                        new InputDecoration(labelText: "Notification text"),
-                    controller: notifTextController,
-                    validator: (String value) {
-                      if (value == '') {
-                        return 'Please enter a notification text';
+
+                      var fromTimeArray = fromController.text.split(':');
+                      var toTimeArray = toController.text.split(':');
+
+                      if (fromTimeArray.length > 1 && toTimeArray.length > 1) {
+                        int fromHourNum = int.tryParse(fromTimeArray[0]) ?? -1;
+                        int fromMinuteNum =
+                            int.tryParse(fromTimeArray[1]) ?? -1;
+                        int toHourNum = int.tryParse(toTimeArray[0]) ?? -1;
+                        int toMinuteNum = int.tryParse(toTimeArray[1]) ?? -1;
+                        if (fromHourNum >= 0 &&
+                            fromMinuteNum >= 0 &&
+                            toHourNum >= 0 &&
+                            toMinuteNum >= 0) {
+                          if (getInterval(parsedValue, fromHourNum,
+                                  fromMinuteNum, toHourNum, toMinuteNum) ==
+                              0) {
+                            return 'You want to get notifications too often:)';
+                          }
+                        }
                       }
                     },
                   ),
@@ -227,7 +223,6 @@ class _LucidAppState extends State {
                           setFromTime(fromController.text);
                           setToTime(toController.text);
                           setRepeatNumber(repeatController.text);
-                          setNotificationText(notifTextController.text);
                           enableNotification(true);
                         }
                       },
@@ -312,7 +307,8 @@ class _LucidAppState extends State {
         await addNotification(
             1, toHour, toMinute, notificationList, addNotifications);
       } else {
-        var intervalNumber = getInterval(repeatNumber);
+        var intervalNumber =
+            getInterval(repeatNumber, fromHour, fromMinute, toHour, toMinute);
         var hour = fromHour;
         var minute = fromMinute;
 
@@ -355,10 +351,25 @@ class _LucidAppState extends State {
       await flutterLocalNotificationsPlugin.showDailyAtTime(
           id,
           'Lucid Dreams',
-          notificationText,
+          generateNotificationText(),
           new Time(hour, minute, 0),
           platformChannelSpecifics);
     }
+  }
+
+  String generateNotificationText() {
+    var notificationBase = [
+      'Reality check ✅',
+      'Look at your hands 🙌🏻',
+      'Try to fly 🤾🏼‍♂️',
+      'Can you breathe with your nose holded? 👃🏻',
+      'What time is it? ⏰',
+      '12 + 13 = ?? 👈🏻',
+      'Is it a dream? 🏝',
+      "Ain't you sleeping? 😴",
+      'Reality? Check! 🤔'
+    ];
+    return notificationBase[Random().nextInt(9)];
   }
 
   String formatMinute(int minute) {
@@ -372,9 +383,22 @@ class _LucidAppState extends State {
     return hour.toString() + ":" + formatMinute(minute);
   }
 
-  int getInterval(int repeatPeriodsNum) {
-    var totalMinutes =
-        (toHour - fromHour - 1) * 60 + (60 - fromMinute) + toMinute;
+  int getInterval(int repeatPeriodsNum, int fromHourNum, int fromMinuteNum,
+      int toHourNum, int toMinuteNum) {
+    var totalMinutes = 0;
+    print("toMinute: " + toMinuteNum.toString());
+    print("fromMinute: " + fromMinuteNum.toString());
+    if (toMinuteNum >= fromMinuteNum) {
+      totalMinutes += toMinuteNum - fromMinuteNum;
+    } else {
+      totalMinutes += (60 - fromMinuteNum) + toMinuteNum;
+    }
+    print("minutes only: " + totalMinutes.toString());
+
+    if (toHourNum > fromHourNum) {
+      totalMinutes += (toHour - fromHour - 1) * 60;
+    }
+    print("total minutes: " + totalMinutes.toString());
     return (totalMinutes / (repeatPeriodsNum - 1)).floor();
   }
 }
