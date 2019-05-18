@@ -251,11 +251,11 @@ class _LucidAppState extends State {
   }
 
   Future onSelectNotification(String payload) async {
+    debugPrint(payload);
     showDialog(
         context: context,
         builder: (_) => new AlertDialog(
-              title: Text('Here is payload'),
-              content: Text("Payload: $payload"),
+              content: Text(payload),
             ));
   }
 
@@ -348,16 +348,22 @@ class _LucidAppState extends State {
       bool createEvent) async {
     notifList.add(getFromattedTimeString(hour, minute));
     if (createEvent) {
+      int key = generateRandomIntInRange();
       await flutterLocalNotificationsPlugin.showDailyAtTime(
           id,
           'Lucid Dreams',
-          generateNotificationText(),
+          getNotificationText(key),
           new Time(hour, minute, 0),
-          platformChannelSpecifics);
+          platformChannelSpecifics,
+          payload: getPayloadText(key));
     }
   }
 
-  String generateNotificationText() {
+  int generateRandomIntInRange() {
+    return Random().nextInt(9);
+  }
+
+  String getNotificationText(int key) {
     var notificationBase = [
       'Reality check ✅',
       'Look at your hands 🙌🏻',
@@ -369,7 +375,22 @@ class _LucidAppState extends State {
       "Ain't you sleeping? 😴",
       'Reality? Check! 🤔'
     ];
-    return notificationBase[Random().nextInt(9)];
+    return notificationBase[key];
+  }
+
+  String getPayloadText(int key) {
+    var payloadBase = [
+      'You can try any test that that you are in reality now',
+      'In the dream your hands may seem opaque',
+      'If you are dremaing - enjoy your flight',
+      'In a dream you can breathe even under water',
+      'You can check the time even on this device:)',
+      'Math in dreams is even harder',
+      'Maybe no',
+      'Objects may act slightly weird if you are',
+      'Details in dreams could differ'
+    ];
+    return payloadBase[key];
   }
 
   String formatMinute(int minute) {
