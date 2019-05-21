@@ -25,6 +25,7 @@ dependencies:
   cupertino_icons: ^0.1.2
   flutter_local_notifications: ^0.7.0
   shared_preferences: "^0.5.2"
+  charts_flutter:
 
 dev_dependencies:
   flutter_test:
