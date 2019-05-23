@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math';
-
+import 'notification_model.dart' as model;
 
 class NotificationSettings extends StatefulWidget {
   @override
@@ -269,7 +269,7 @@ class _NotificationSettingsState extends State {
 
   Future enableNotification(switchValue) async {
     await flutterLocalNotificationsPlugin.cancelAll();
-    print("I cancelled all!!!");
+    // @TODO remove all notifs (only for today)
     switchNotification(switchValue);
     if (switchValue) {
       if (repeatPeriodsNumber == 0) {
@@ -348,6 +348,11 @@ class _NotificationSettingsState extends State {
           new Time(hour, minute, 0),
           platformChannelSpecifics,
           payload: getPayloadText(key));
+      // insert to db
+      model.Notification notifModel = new model.Notification(
+          id: id, date: '23.05', isRaised: false, isRead: false);
+      await model.insertNotification(notifModel);
+      print("I added to database notification with id " + id.toString());
     }
   }
 
@@ -374,7 +379,7 @@ class _NotificationSettingsState extends State {
     var payloadBase = [
       'You can try any test that that you are in reality now',
       'In the dream your hands may seem opaque',
-      'If you are dremaing - enjoy your flight',
+      'If you are dreaming - enjoy your flight',
       'In a dream you can breathe even under water',
       'You can check the time even on this device:)',
       'Math in dreams is even harder',

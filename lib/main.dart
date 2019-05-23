@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'notification_settings.dart';
 import 'notification_statistics.dart';
+import 'notification_model.dart' as model;
 
 final ThemeData kIOSTheme = new ThemeData(brightness: Brightness.dark);
 
@@ -39,11 +40,12 @@ class LucidApp extends StatelessWidget {
           Card(
             child: ListTile(
               title: Text('Notification Statistics'),
-              onTap: () {
+              onTap: () async {
+                var chartSeries = await model.chartSeries();
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => NotificationStatistics.withSampleData()),
+                      builder: (context) => NotificationStatistics(chartSeries)),
                 );
               },
             ),
