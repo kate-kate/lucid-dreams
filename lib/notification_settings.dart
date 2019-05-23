@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math';
 import 'notification_model.dart' as model;
+import 'package:intl/intl.dart';
 
 class NotificationSettings extends StatefulWidget {
   @override
@@ -269,7 +270,8 @@ class _NotificationSettingsState extends State {
 
   Future enableNotification(switchValue) async {
     await flutterLocalNotificationsPlugin.cancelAll();
-    // @TODO remove all notifs (only for today)
+    
+    model.removeNotifications(getTodaysFormattedDate());
     switchNotification(switchValue);
     if (switchValue) {
       if (repeatPeriodsNumber == 0) {
@@ -350,9 +352,8 @@ class _NotificationSettingsState extends State {
           payload: getPayloadText(key));
       // insert to db
       model.Notification notifModel = new model.Notification(
-          id: id, date: '23.05', isRaised: false, isRead: false);
+          id: id, date: getTodaysFormattedDate(), isRaised: false, isRead: false);
       await model.insertNotification(notifModel);
-      print("I added to database notification with id " + id.toString());
     }
   }
 
@@ -414,5 +415,11 @@ class _NotificationSettingsState extends State {
       totalMinutes += (toHour - fromHour - 1) * 60;
     }
     return (totalMinutes / (repeatPeriodsNum - 1)).floor();
+  }
+
+  String getTodaysFormattedDate() {
+    var now = new DateTime.now();
+    var formatter = new DateFormat('dd.MM');
+    return formatter.format(now);
   }
 }

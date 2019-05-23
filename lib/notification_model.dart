@@ -83,3 +83,7 @@ Future<List<Notification>> notifications() async {
   });
 }
 
+Future<void> removeNotifications(String date) async {
+  final db = await DBProvider.db.database;
+  await db.delete('notifications', where: "date = ? and is_raised = 0", whereArgs: [date]);
+}
