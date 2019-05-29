@@ -13,6 +13,21 @@ class Notification {
   Map<String, dynamic> toMap() {
     return {'id': id, 'date': date, 'is_raised': isRaised, 'is_read': isRead};
   }
+
+  factory Notification.fromMap(Map<String, dynamic> res) => new Notification(
+        id: res["id"],
+        date: res["date"],
+        isRaised: res["is_raised"],
+        isRead: res["is_read"],
+      );
+
+  markAsRaised() {
+    this.isRaised = true;
+  }
+
+  markAsRead() {
+    this.isRead = true;
+  }
 }
 
 Future<void> insertNotification(Notification notification) async {
@@ -85,5 +100,18 @@ Future<List<Notification>> notifications() async {
 
 Future<void> removeNotifications(String date) async {
   final db = await DBProvider.db.database;
-  await db.delete('notifications', where: "date = ? and is_raised = 0", whereArgs: [date]);
+  await db.delete('notifications',
+      where: "date = ? and is_raised = 0", whereArgs: [date]);
+}
+
+Future<Notification> findNotification(int id) async {
+  final db = await DBProvider.db.database;
+  var res = await db.query('notifications', where: "id = ?", whereArgs: [id]);
+  return res.isNotEmpty ? Notification.fromMap(res.first) : Null;
+}
+
+Future<void> updateNotification(Notification notification) async {
+  final db = await DBProvider.db.database;
+  await db.update('notifications', notification.toMap(),
+      where: "id = ?", whereArgs: [notification.id]);
 }

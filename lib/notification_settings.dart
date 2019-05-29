@@ -244,12 +244,10 @@ class _NotificationSettingsState extends State {
   }
 
   Future onSelectNotification(String payload) async {
-    debugPrint(payload);
-    showDialog(
-        context: context,
-        builder: (_) => new AlertDialog(
-              content: Text(payload),
-            ));
+    var id = int.parse(payload);
+    model.Notification notif = await model.findNotification(id);
+    notif.markAsRead();
+    model.updateNotification(notif);
   }
 
   String validateTime(String inputValue) {
@@ -349,7 +347,7 @@ class _NotificationSettingsState extends State {
           getNotificationText(key),
           new Time(hour, minute, 0),
           platformChannelSpecifics,
-          payload: getPayloadText(key));
+          payload: id.toString());
       // insert to db
       model.Notification notifModel = new model.Notification(
           id: id, date: getTodaysFormattedDate(), isRaised: false, isRead: false);
@@ -376,21 +374,6 @@ class _NotificationSettingsState extends State {
     return notificationBase[key];
   }
 
-  String getPayloadText(int key) {
-    var payloadBase = [
-      'You can try any test that that you are in reality now',
-      'In the dream your hands may seem opaque',
-      'If you are dreaming - enjoy your flight',
-      'In a dream you can breathe even under water',
-      'You can check the time even on this device:)',
-      'Math in dreams is even harder',
-      'Maybe no',
-      'Objects may act slightly weird if you are',
-      'Details in dreams could differ'
-    ];
-    return payloadBase[key];
-  }
-
   String formatMinute(int minute) {
     if (minute < 10) {
       return "0" + minute.toString();
@@ -412,7 +395,11 @@ class _NotificationSettingsState extends State {
     }
 
     if (toHourNum > fromHourNum) {
-      totalMinutes += (toHour - fromHour - 1) * 60;
+      if (fromMinuteNum > toMinuteNum) {
+        totalMinutes += (toHourNum - fromHourNum - 1) * 60;
+      } else {
+        totalMinutes += (toHourNum - fromHourNum) * 60;
+      }
     }
     return (totalMinutes / (repeatPeriodsNum - 1)).floor();
   }
