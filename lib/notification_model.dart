@@ -2,6 +2,10 @@ import 'database.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:charts_flutter/flutter.dart' as charts;
 
+const String statusUnraised = 'unraised';
+const String statusRaised = 'raised';
+const String statusRead = 'read';
+
 class Notification {
   final int id;
   final String date;
@@ -17,8 +21,8 @@ class Notification {
   factory Notification.fromMap(Map<String, dynamic> res) => new Notification(
         id: res["id"],
         date: res["date"],
-        isRaised: res["is_raised"],
-        isRead: res["is_read"],
+        isRaised: res["is_raised"] == 1 ? true : false,
+        isRead: res["is_read"] == 1 ? true : false,
       );
 
   markAsRaised() {
@@ -45,7 +49,7 @@ Future<List<charts.Series<NotificationDataWrapper, String>>>
 
   notifList.forEach((Notification notif) {
     String status =
-        notif.isRaised ? (notif.isRead ? 'read' : 'unread') : 'unraised';
+        notif.isRaised ? (notif.isRead ? statusRaised : statusRead) : statusUnraised;
     Map<String, NotificationDataWrapper> dateNotifMap =
         (statusNotifMap != null && statusNotifMap.containsKey(status))
             ? statusNotifMap[status]
@@ -61,13 +65,33 @@ Future<List<charts.Series<NotificationDataWrapper, String>>>
 
   var res = new List<charts.Series<NotificationDataWrapper, String>>();
 
-  if (statusNotifMap['unraised'] != null) {
+  if (statusNotifMap[statusUnraised] != null) {
     res.add(new charts.Series<NotificationDataWrapper, String>(
       id: 'Unraised',
       domainFn: (NotificationDataWrapper notifData, _) => notifData.date,
       measureFn: (NotificationDataWrapper notifData, _) => notifData.count,
-      data: statusNotifMap['unraised'].values.toList(),
+      data: statusNotifMap[statusUnraised].values.toList(),
       colorFn: (_, __) => charts.MaterialPalette.green.shadeDefault.lighter,
+    ));
+  }
+
+  if (statusNotifMap[statusRaised] != null) {
+    res.add(new charts.Series<NotificationDataWrapper, String>(
+      id: 'Raised',
+      domainFn: (NotificationDataWrapper notifData, _) => notifData.date,
+      measureFn: (NotificationDataWrapper notifData, _) => notifData.count,
+      data: statusNotifMap[statusRaised].values.toList(),
+      colorFn: (_, __) => charts.MaterialPalette.green.shadeDefault,
+    ));
+  }
+
+  if (statusNotifMap[statusRead] != null) {
+    res.add(new charts.Series<NotificationDataWrapper, String>(
+      id: 'Read',
+      domainFn: (NotificationDataWrapper notifData, _) => notifData.date,
+      measureFn: (NotificationDataWrapper notifData, _) => notifData.count,
+      data: statusNotifMap[statusRead].values.toList(),
+      colorFn: (_, __) => charts.MaterialPalette.green.shadeDefault.darker,
     ));
   }
   return res;
@@ -114,4 +138,22 @@ Future<void> updateNotification(Notification notification) async {
   final db = await DBProvider.db.database;
   await db.update('notifications', notification.toMap(),
       where: "id = ?", whereArgs: [notification.id]);
+}
+
+Future<List<Notification>> findNotificationsForDate(String date) async {
+  final db = await DBProvider.db.database;
+  var res = await db.query('notifications', where: "date = ?", whereArgs: [date]);
+  List<Notification> notifList = new List<Notification>();
+  res.forEach((Map<String, dynamic> map) {
+    Notification notif = Notification.fromMap(map);
+    notifList.add(notif);
+  });
+  return notifList;
+}
+
+Future<int> getBiggestIdForStart() async {
+  final db = await DBProvider.db.database;
+  var res = Sqflite
+    .firstIntValue(await db.rawQuery("SELECT MAX(id) FROM notifications"));
+  return res;
 }

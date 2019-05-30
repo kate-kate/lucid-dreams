@@ -245,9 +245,21 @@ class _NotificationSettingsState extends State {
 
   Future onSelectNotification(String payload) async {
     var id = int.parse(payload);
-    model.Notification notif = await model.findNotification(id);
-    notif.markAsRead();
-    model.updateNotification(notif);
+    List<model.Notification> notifList = await model.findNotificationsForDate(getTodaysFormattedDate());
+    notifList.forEach((model.Notification notif) {
+      bool update = false;
+      if (notif.id == id) {
+        notif.markAsRead();
+        update = true;
+      }
+      if (notif.id <= id) {
+        notif.markAsRaised();
+        update = true;
+      } 
+      if (update) {
+        model.updateNotification(notif);
+      }
+    });
   }
 
   String validateTime(String inputValue) {
@@ -284,6 +296,7 @@ class _NotificationSettingsState extends State {
   Future _generateTimeList(int startHour, int startMinute, int endHour,
       int endMinute, int repeatNumber, bool addNotifications) async {
     var notificationList = new List<String>();
+    int startId = await model.getBiggestIdForStart() + 1;
 
     if (fromHour != null &&
         fromMinute != null &&
@@ -292,20 +305,20 @@ class _NotificationSettingsState extends State {
         repeatNumber > 0) {
       if (repeatNumber == 1) {
         await addNotification(
-            0, fromHour, fromMinute, notificationList, addNotifications);
+            startId, fromHour, fromMinute, notificationList, addNotifications);
       } else if (repeatNumber == 2) {
         await addNotification(
-            0, fromHour, fromMinute, notificationList, addNotifications);
+            startId, fromHour, fromMinute, notificationList, addNotifications);
         await addNotification(
-            1, toHour, toMinute, notificationList, addNotifications);
+            startId, toHour, toMinute, notificationList, addNotifications);
       } else {
         var intervalNumber =
             getInterval(repeatNumber, fromHour, fromMinute, toHour, toMinute);
         var hour = fromHour;
         var minute = fromMinute;
 
-        for (var counter = 0; counter < repeatNumber; counter++) {
-          if (counter == 0) {
+        for (var counter = startId; counter < repeatNumber; counter++) {
+          if (counter == startId) {
             await addNotification(
                 counter, hour, minute, notificationList, addNotifications);
           } else {
