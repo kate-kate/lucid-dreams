@@ -32,7 +32,7 @@ class LucidApp extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => NotificationSettings()),
+                      builder: (context) => NotificationSettings(false, 0)),
                 );
               },
             ),

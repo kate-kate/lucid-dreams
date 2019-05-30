@@ -6,6 +6,10 @@ import 'notification_model.dart' as model;
 import 'package:intl/intl.dart';
 
 class NotificationSettings extends StatefulWidget {
+  final int currentReadNotificationId;
+  final bool wasIdFromPayload;
+  NotificationSettings(this.wasIdFromPayload, this.currentReadNotificationId);
+
   @override
   _NotificationSettingsState createState() {
     return _NotificationSettingsState();
@@ -13,6 +17,8 @@ class NotificationSettings extends StatefulWidget {
 }
 
 class _NotificationSettingsState extends State {
+  @override
+  NotificationSettings get widget => super.widget;
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
   bool switchEnabled = false;
@@ -54,7 +60,7 @@ class _NotificationSettingsState extends State {
         androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
   }
 
-  void _loadPreferences() async {
+  Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       switchEnabled = prefs.getBool('lucidNotificationsEnabled') != null
@@ -69,8 +75,8 @@ class _NotificationSettingsState extends State {
           : 0;
     });
 
-    await _generateTimeList(
-        fromHour, fromMinute, toHour, toMinute, repeatPeriodsNumber, false);
+    await _generateTimeList(fromHour, fromMinute, toHour, toMinute,
+        repeatPeriodsNumber, false, false);
 
     var fromText = (fromHour != null && fromMinute != null)
         ? getFromattedTimeString(fromHour, fromMinute)
@@ -83,6 +89,38 @@ class _NotificationSettingsState extends State {
     toController = TextEditingController(text: toText);
     repeatController =
         TextEditingController(text: repeatPeriodsNumber.toString());
+    await _markNotification();
+  }
+
+  Future<void> _markNotification() async {
+    if (widget.wasIdFromPayload) {
+      List<model.Notification> notifList =
+          await model.findNotificationsForDate(getTodaysFormattedDate());
+      int id = widget.currentReadNotificationId;
+
+      if (notifList.length == 0) {
+        // save timeList to db with todays date
+        _generateTimeList(fromHour, fromMinute, toHour, toMinute,
+            repeatPeriodsNumber, false, true);
+        notifList =
+            await model.findNotificationsForDate(getTodaysFormattedDate());
+      }
+
+      notifList.forEach((model.Notification notif) {
+        bool update = false;
+        if (notif.id == id) {
+          notif.markAsRead();
+          update = true;
+        }
+        if (notif.id <= id) {
+          notif.markAsRaised();
+          update = true;
+        }
+        if (update) {
+          model.updateNotification(notif);
+        }
+      });
+    }
   }
 
   void switchNotification(bool value) async {
@@ -245,21 +283,10 @@ class _NotificationSettingsState extends State {
 
   Future onSelectNotification(String payload) async {
     var id = int.parse(payload);
-    List<model.Notification> notifList = await model.findNotificationsForDate(getTodaysFormattedDate());
-    notifList.forEach((model.Notification notif) {
-      bool update = false;
-      if (notif.id == id) {
-        notif.markAsRead();
-        update = true;
-      }
-      if (notif.id <= id) {
-        notif.markAsRaised();
-        update = true;
-      } 
-      if (update) {
-        model.updateNotification(notif);
-      }
-    });
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => NotificationSettings(true, id)),
+    );
   }
 
   String validateTime(String inputValue) {
@@ -280,21 +307,21 @@ class _NotificationSettingsState extends State {
 
   Future enableNotification(switchValue) async {
     await flutterLocalNotificationsPlugin.cancelAll();
-    
+
     model.removeNotifications(getTodaysFormattedDate());
     switchNotification(switchValue);
     if (switchValue) {
       if (repeatPeriodsNumber == 0) {
         switchNotification(false);
       } else {
-        await _generateTimeList(
-            fromHour, fromMinute, toHour, toMinute, repeatPeriodsNumber, true);
+        await _generateTimeList(fromHour, fromMinute, toHour, toMinute,
+            repeatPeriodsNumber, true, true);
       }
     }
   }
 
   Future _generateTimeList(int startHour, int startMinute, int endHour,
-      int endMinute, int repeatNumber, bool addNotifications) async {
+      int endMinute, int repeatNumber, bool createEvent, bool saveToDb) async {
     var notificationList = new List<String>();
     int biggestId = await model.getBiggestIdForStart();
     int startId = biggestId != null ? biggestId + 1 : 0;
@@ -305,13 +332,13 @@ class _NotificationSettingsState extends State {
         toMinute != null &&
         repeatNumber > 0) {
       if (repeatNumber == 1) {
-        await addNotification(
-            startId, fromHour, fromMinute, notificationList, addNotifications);
+        await addNotification(startId, fromHour, fromMinute, notificationList,
+            createEvent, saveToDb);
       } else if (repeatNumber == 2) {
+        await addNotification(startId, fromHour, fromMinute, notificationList,
+            createEvent, saveToDb);
         await addNotification(
-            startId, fromHour, fromMinute, notificationList, addNotifications);
-        await addNotification(
-            startId, toHour, toMinute, notificationList, addNotifications);
+            startId, toHour, toMinute, notificationList, createEvent, saveToDb);
       } else {
         var intervalNumber =
             getInterval(repeatNumber, fromHour, fromMinute, toHour, toMinute);
@@ -321,7 +348,7 @@ class _NotificationSettingsState extends State {
         for (var counter = 0; counter < repeatNumber; counter++) {
           if (counter == 0) {
             await addNotification(
-                startId, hour, minute, notificationList, addNotifications);
+                startId, hour, minute, notificationList, createEvent, saveToDb);
           } else {
             minute += intervalNumber;
             if (minute >= 60) {
@@ -334,11 +361,11 @@ class _NotificationSettingsState extends State {
                     (minute > toMinute ||
                         toMinute - minute < intervalNumber)) ||
                 (hour > toHour)) {
-              await addNotification(startId + counter, toHour, toMinute, notificationList,
-                  addNotifications);
+              await addNotification(startId + counter, toHour, toMinute,
+                  notificationList, createEvent, saveToDb);
             } else {
-              await addNotification(
-                  startId + counter, hour, minute, notificationList, addNotifications);
+              await addNotification(startId + counter, hour, minute,
+                  notificationList, createEvent, saveToDb);
             }
           }
         }
@@ -351,7 +378,7 @@ class _NotificationSettingsState extends State {
   }
 
   Future addNotification(int id, int hour, int minute, List<String> notifList,
-      bool createEvent) async {
+      bool createEvent, bool saveToDb) async {
     notifList.add(getFromattedTimeString(hour, minute));
     if (createEvent) {
       int key = generateRandomIntInRange();
@@ -362,9 +389,13 @@ class _NotificationSettingsState extends State {
           new Time(hour, minute, 0),
           platformChannelSpecifics,
           payload: id.toString());
-      // insert to db
+    }
+    if (saveToDb) {
       model.Notification notifModel = new model.Notification(
-          id: id, date: getTodaysFormattedDate(), isRaised: false, isRead: false);
+          id: id,
+          date: getTodaysFormattedDate(),
+          isRaised: false,
+          isRead: false);
       await model.insertNotification(notifModel);
     }
   }
