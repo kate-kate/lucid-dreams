@@ -296,7 +296,8 @@ class _NotificationSettingsState extends State {
   Future _generateTimeList(int startHour, int startMinute, int endHour,
       int endMinute, int repeatNumber, bool addNotifications) async {
     var notificationList = new List<String>();
-    int startId = await model.getBiggestIdForStart() + 1;
+    int biggestId = await model.getBiggestIdForStart();
+    int startId = biggestId != null ? biggestId + 1 : 0;
 
     if (fromHour != null &&
         fromMinute != null &&
@@ -317,10 +318,10 @@ class _NotificationSettingsState extends State {
         var hour = fromHour;
         var minute = fromMinute;
 
-        for (var counter = startId; counter < repeatNumber; counter++) {
-          if (counter == startId) {
+        for (var counter = 0; counter < repeatNumber; counter++) {
+          if (counter == 0) {
             await addNotification(
-                counter, hour, minute, notificationList, addNotifications);
+                startId, hour, minute, notificationList, addNotifications);
           } else {
             minute += intervalNumber;
             if (minute >= 60) {
@@ -333,11 +334,11 @@ class _NotificationSettingsState extends State {
                     (minute > toMinute ||
                         toMinute - minute < intervalNumber)) ||
                 (hour > toHour)) {
-              await addNotification(counter, toHour, toMinute, notificationList,
+              await addNotification(startId + counter, toHour, toMinute, notificationList,
                   addNotifications);
             } else {
               await addNotification(
-                  counter, hour, minute, notificationList, addNotifications);
+                  startId + counter, hour, minute, notificationList, addNotifications);
             }
           }
         }
