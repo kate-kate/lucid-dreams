@@ -89,22 +89,26 @@ class _NotificationSettingsState extends State {
     toController = TextEditingController(text: toText);
     repeatController =
         TextEditingController(text: repeatPeriodsNumber.toString());
-    await _markNotification();
+    await _markNotification(
+        fromHour, fromMinute, toHour, toMinute, repeatPeriodsNumber);
   }
 
-  Future<void> _markNotification() async {
-    if (widget.wasIdFromPayload) {
-      List<model.Notification> notifList =
-          await model.findNotificationsForDate(getTodaysFormattedDate());
-      int id = widget.currentReadNotificationId;
+  Future<void> _markNotification(int fromHour, int fromMinute, int toHour,
+      int toMinute, int repeatPeriodsNumber) async {
+        
+    List<model.Notification> notifList =
+        await model.findNotificationsForDate(getTodaysFormattedDate());
 
-      if (notifList.length == 0) {
-        // save timeList to db with todays date
-        _generateTimeList(fromHour, fromMinute, toHour, toMinute,
-            repeatPeriodsNumber, false, true);
-        notifList =
-            await model.findNotificationsForDate(getTodaysFormattedDate());
-      }
+    if (notifList.length == 0) {
+      // save timeList to db with todays date
+      _generateTimeList(fromHour, fromMinute, toHour, toMinute,
+          repeatPeriodsNumber, false, true);
+      notifList =
+          await model.findNotificationsForDate(getTodaysFormattedDate());
+    }
+
+    if (widget.wasIdFromPayload) {
+      int id = widget.currentReadNotificationId;
 
       notifList.forEach((model.Notification notif) {
         bool update = false;
